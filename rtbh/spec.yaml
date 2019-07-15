@@ -1,0 +1,195 @@
+
+nodes:
+  ## AS65501
+  - name: S1
+    type: docker
+    image: katoko/ubuntu:18.04
+    interfaces:
+      - { name: net0, type: direct, args: R1#net0 }
+
+  - name: RR
+    type: docker
+    image: katoko/frr
+    interfaces:
+      - { name: net0, type: direct, args: R1#net1 }
+      - { name: net1, type: direct, args: R2#net0 }
+      - { name: net2, type: direct, args: R3#net0 }
+  
+  - name: R1
+    type: docker
+    image: katoko/frr
+    interfaces:
+      - { name: net0, type: direct, args: S1#net0 }
+      - { name: net1, type: direct, args: RR#net0 }
+      - { name: net2, type: direct, args: R2#net1 }
+      - { name: net3, type: direct, args: R3#net1 }
+
+  - name: R2
+    type: docker
+    image: katoko/frr
+    interfaces:
+      - { name: net0, type: direct, args: RR#net1 }
+      - { name: net1, type: direct, args: R1#net2 }
+      - { name: net2, type: direct, args: R4#net0 }
+
+  - name: R3
+    type: docker
+    image: katoko/frr
+    interfaces:
+      - { name: net0, type: direct, args: RR#net2 }
+      - { name: net1, type: direct, args: R1#net3 }
+      - { name: net2, type: direct, args: R5#net0 }
+  ################################################
+
+  ## AS65502
+  - name: R4
+    type: docker
+    image: katoko/frr
+    interfaces:
+      - { name: net0, type: direct, args: R2#net2 }
+      - { name: net1, type: direct, args: C1#net0 }
+
+  - name: C1
+    type: docker
+    image: katoko/ubuntu:18.04
+    interfaces:
+      - { name: net0, type: direct, args: R4#net1 }
+  ################################################
+ 
+  ## AS65503
+  - name: R5
+    type: docker
+    image: katoko/frr
+    interfaces:
+      - { name: net0, type: direct, args: R3#net2 }
+      - { name: net1, type: direct, args: C2#net0 }
+
+  - name: C2
+    type: docker
+    image: katoko/ubuntu:18.04
+    interfaces:
+      - { name: net0, type: direct, args: R5#net1 }
+  ###############################################
+
+node_configs:
+  - name: S1
+    cmds:
+      - cmd: ip addr add 192.168.10.100/24 dev net0
+      - cmd: ip route add default via 192.168.10.1
+
+  - name: RR
+    cmds:
+      - cmd: ip addr add 192.168.1.254/24 dev net0
+      - cmd: ip addr add 192.168.2.254/24 dev net1
+      - cmd: ip addr add 192.168.3.254/24 dev net2
+      - cmd: /usr/lib/frr/frrinit.sh start
+      - cmd: >-
+          vtysh -c "conf t"
+          -c "router bgp 65501"
+          -c "  bgp router-id 254.254.254.254"
+          -c "  neighbor 192.168.1.1 remote-as 65501"
+          -c "  neighbor 192.168.2.2 remote-as 65501"
+          -c "  neighbor 192.168.3.3 remote-as 65501"
+          -c "  address-family ipv4 unicast"
+          -c "     neighbor 192.168.1.1 route-reflector-client"
+          -c "     neighbor 192.168.2.2 route-reflector-client"
+          -c "     neighbor 192.168.3.3 route-reflector-client" 
+          -c "  exit-address-family"
+          -c "router ospf"
+          -c "  network 192.168.1.0/24 area 0"
+          -c "  network 192.168.2.0/24 area 0"
+          -c "  network 192.168.3.0/24 area 0"
+
+  - name: R1
+    cmds:
+      - cmd: ip addr add 192.168.10.1/24 dev net0
+      - cmd: ip addr add 192.168.1.1/24 dev net1
+      - cmd: ip addr add 192.168.20.1/24 dev net2
+      - cmd: ip addr add 192.168.30.1/24 dev net3
+      - cmd: /usr/lib/frr/frrinit.sh start
+      - cmd: >-
+          vtysh -c "conf t"
+          -c "router bgp 65501"
+          -c "  bgp router-id 1.1.1.1"
+          -c "  neighbor 192.168.1.254 remote-as 65501"
+          -c "  network 192.168.10.0/24"
+          -c "router ospf"
+          -c "  network 192.168.1.0/24 area 0"
+          -c "  network 192.168.10.0/24 area 0"
+          -c "  network 192.168.20.0/24 area 0"
+          -c "  network 192.168.30.0/24 area 0"
+
+  - name: R2
+    cmds:
+      - cmd: ip addr add 192.168.2.2/24 dev net0
+      - cmd: ip addr add 192.168.20.2/24 dev net1
+      - cmd: ip addr add 10.0.0.2/24 dev net2
+      - cmd: /usr/lib/frr/frrinit.sh start
+      - cmd: >-
+          vtysh -c "conf t"
+          -c "router bgp 65501"
+          -c "  bgp router-id 2.2.2.2"
+          -c "  neighbor 192.168.2.254 remote-as 65501"
+          -c "  neighbor 10.0.0.4 remote-as 65502"
+          -c "  network 192.168.20.0/24"
+          -c "router ospf"
+          -c "  network 192.168.2.0/24 area 0"
+          -c "  network 192.168.20.0/24 area 0"
+
+  - name: R3
+    cmds:
+      - cmd: ip addr add 192.168.3.3/24 dev net0
+      - cmd: ip addr add 192.168.30.3/24 dev net1
+      - cmd: ip addr add 10.0.1.3/24 dev net2
+      - cmd: /usr/lib/frr/frrinit.sh start
+      - cmd: >-
+          vtysh -c "conf t"
+          -c "router bgp 65501"
+          -c "  bgp router-id 3.3.3.3"
+          -c "  neighbor 192.168.3.254 remote-as 65501"
+          -c "  neighbor 10.0.1.5 remote-as 65503"
+          -c "  network 192.168.30.0/24"
+          -c "router ospf"
+          -c "  network 192.168.3.0/24 area 0"
+          -c "  network 192.168.30.0/24 area 0"
+
+  - name: R4
+    cmds:
+      - cmd: ip addr add 10.0.0.4/24 dev net0
+      - cmd: ip addr add 192.168.100.4/24 dev net1
+      - cmd: /usr/lib/frr/frrinit.sh start
+      - cmd: >-
+          vtysh -c "conf t"
+          -c "router bgp 65502"
+          -c "  bgp router-id 4.4.4.4"
+          -c "  neighbor 10.0.0.2 remote-as 65501"
+          -c "  network 192.168.100.0/24"
+
+  - name: C1
+    cmds:
+      - cmd: ip addr add 192.168.100.100/24 dev net0
+      - cmd: ip route add default via 192.168.100.4
+
+  - name: R5
+    cmds:
+      - cmd: ip addr add 10.0.1.5/24 dev net0
+      - cmd: ip addr add 192.168.200.5/24 dev net1
+      - cmd: /usr/lib/frr/frrinit.sh start
+      - cmd: >-
+          vtysh -c "conf t"
+          -c "router bgp 65503"
+          -c "  bgp router-id 5.5.5.5"
+          -c "  neighbor 10.0.1.3 remote-as 65501"
+          -c "  network 192.168.200.0/24"
+
+  - name: C2
+    cmds:
+      - cmd: ip addr add 192.168.200.100/24 dev net0
+      - cmd: ip route add default via 192.168.200.5
+
+# test:
+#   - name: p2p
+#     cmds:
+#     - cmd: docker exec C0 ping -c2 10.0.0.2
+#     - cmd: echo slankdev slankdev
+
