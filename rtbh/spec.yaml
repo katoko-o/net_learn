@@ -79,6 +79,7 @@ node_configs:
 
   - name: RR
     cmds:
+      - cmd: ip addr add 10.254.0.10/32 dev lo
       - cmd: ip addr add 192.168.1.254/24 dev net0
       - cmd: ip addr add 192.168.2.254/24 dev net1
       - cmd: ip addr add 192.168.3.254/24 dev net2
@@ -86,22 +87,27 @@ node_configs:
       - cmd: >-
           vtysh -c "conf t"
           -c "router bgp 65501"
-          -c "  bgp router-id 254.254.254.254"
-          -c "  neighbor 192.168.1.1 remote-as 65501"
-          -c "  neighbor 192.168.2.2 remote-as 65501"
-          -c "  neighbor 192.168.3.3 remote-as 65501"
+          -c "  bgp router-id 10.254.0.10"
+          -c "  neighbor 10.254.0.1 remote-as 65501"
+          -c "  neighbor 10.254.0.1 update-source lo"
+          -c "  neighbor 10.254.0.2 remote-as 65501"
+          -c "  neighbor 10.254.0.2 update-source lo"
+          -c "  neighbor 10.254.0.3 remote-as 65501"
+          -c "  neighbor 10.254.0.3 update-source lo"
           -c "  address-family ipv4 unicast"
-          -c "     neighbor 192.168.1.1 route-reflector-client"
-          -c "     neighbor 192.168.2.2 route-reflector-client"
-          -c "     neighbor 192.168.3.3 route-reflector-client" 
+          -c "     neighbor 10.254.0.1 route-reflector-client"
+          -c "     neighbor 10.254.0.2 route-reflector-client"
+          -c "     neighbor 10.254.0.3 route-reflector-client" 
           -c "  exit-address-family"
           -c "router ospf"
+          -c "  network 10.254.0.10/32 area 0"
           -c "  network 192.168.1.0/24 area 0"
           -c "  network 192.168.2.0/24 area 0"
           -c "  network 192.168.3.0/24 area 0"
 
   - name: R1
     cmds:
+      - cmd: ip addr add 10.254.0.1/32 dev lo
       - cmd: ip addr add 192.168.10.1/24 dev net0
       - cmd: ip addr add 192.168.1.1/24 dev net1
       - cmd: ip addr add 192.168.20.1/24 dev net2
@@ -110,10 +116,12 @@ node_configs:
       - cmd: >-
           vtysh -c "conf t"
           -c "router bgp 65501"
-          -c "  bgp router-id 1.1.1.1"
-          -c "  neighbor 192.168.1.254 remote-as 65501"
+          -c "  bgp router-id 10.254.0.1"
+          -c "  neighbor 10.254.0.10 remote-as 65501"
+          -c "  neighbor 10.254.0.10 update-source lo"
           -c "  network 192.168.10.0/24"
           -c "router ospf"
+          -c "  network 10.254.0.1/32 area 0"
           -c "  network 192.168.1.0/24 area 0"
           -c "  network 192.168.10.0/24 area 0"
           -c "  network 192.168.20.0/24 area 0"
@@ -121,6 +129,7 @@ node_configs:
 
   - name: R2
     cmds:
+      - cmd: ip addr add 10.254.0.2/32 dev lo
       - cmd: ip addr add 192.168.2.2/24 dev net0
       - cmd: ip addr add 192.168.20.2/24 dev net1
       - cmd: ip addr add 10.0.0.2/24 dev net2
@@ -128,16 +137,22 @@ node_configs:
       - cmd: >-
           vtysh -c "conf t"
           -c "router bgp 65501"
-          -c "  bgp router-id 2.2.2.2"
-          -c "  neighbor 192.168.2.254 remote-as 65501"
-          -c "  neighbor 10.0.0.4 remote-as 65502"
+          -c "  bgp router-id 10.254.0.2"
+          -c "  neighbor 10.254.0.10 remote-as 65501"
+          -c "  neighbor 10.254.0.10 update-source lo"
+          -c "  neighbor 10.254.0.4 remote-as 65502"
+          -c "  neighbor 10.254.0.4 update-source lo"
+          -c "  neighbor 10.254.0.4 ebgp-multihop 2"
           -c "  network 192.168.20.0/24"
           -c "router ospf"
+          -c "  network 10.254.0.2/32 area 0"
           -c "  network 192.168.2.0/24 area 0"
           -c "  network 192.168.20.0/24 area 0"
+          -c "ip route 10.254.0.4/32 10.0.0.4"
 
   - name: R3
     cmds:
+      - cmd: ip addr add 10.254.0.3/32 dev lo
       - cmd: ip addr add 192.168.3.3/24 dev net0
       - cmd: ip addr add 192.168.30.3/24 dev net1
       - cmd: ip addr add 10.0.1.3/24 dev net2
@@ -145,25 +160,34 @@ node_configs:
       - cmd: >-
           vtysh -c "conf t"
           -c "router bgp 65501"
-          -c "  bgp router-id 3.3.3.3"
-          -c "  neighbor 192.168.3.254 remote-as 65501"
-          -c "  neighbor 10.0.1.5 remote-as 65503"
+          -c "  bgp router-id 10.254.0.3"
+          -c "  neighbor 10.254.0.10 remote-as 65501"
+          -c "  neighbor 10.254.0.10 update-source lo"
+          -c "  neighbor 10.254.0.5 remote-as 65503"
+          -c "  neighbor 10.254.0.5 update-source lo"
+          -c "  neighbor 10.254.0.5 ebgp-multihop 2"
           -c "  network 192.168.30.0/24"
           -c "router ospf"
+          -c "  network 10.254.0.3/32 area 0"
           -c "  network 192.168.3.0/24 area 0"
           -c "  network 192.168.30.0/24 area 0"
+          -c "ip route 10.254.0.5/32 10.0.0.5"
 
   - name: R4
     cmds:
+      - cmd: ip addr add 10.254.0.4/32 dev lo
       - cmd: ip addr add 10.0.0.4/24 dev net0
       - cmd: ip addr add 192.168.100.4/24 dev net1
       - cmd: /usr/lib/frr/frrinit.sh start
       - cmd: >-
           vtysh -c "conf t"
           -c "router bgp 65502"
-          -c "  bgp router-id 4.4.4.4"
-          -c "  neighbor 10.0.0.2 remote-as 65501"
+          -c "  bgp router-id 10.254.0.4"
+          -c "  neighbor 10.254.0.2 remote-as 65501"
+          -c "  neighbor 10.254.0.2 update-source lo"
+          -c "  neighbor 10.254.0.2 ebgp-multihop 2"
           -c "  network 192.168.100.0/24"
+          -c "ip route 10.254.0.2/32 10.0.0.2"
 
   - name: C1
     cmds:
@@ -172,6 +196,7 @@ node_configs:
 
   - name: R5
     cmds:
+      - cmd: ip addr add 10.254.0.5/32 dev lo
       - cmd: ip addr add 10.0.1.5/24 dev net0
       - cmd: ip addr add 192.168.200.5/24 dev net1
       - cmd: /usr/lib/frr/frrinit.sh start
@@ -179,8 +204,11 @@ node_configs:
           vtysh -c "conf t"
           -c "router bgp 65503"
           -c "  bgp router-id 5.5.5.5"
-          -c "  neighbor 10.0.1.3 remote-as 65501"
+          -c "  neighbor 10.254.0.3 remote-as 65501"
+          -c "  neighbor 10.254.0.3 update-source lo"
+          -c "  neighbor 10.254.0.3 ebgp-multihop 2"
           -c "  network 192.168.200.0/24"
+          -c "ip route 10.254.0.3/32 10.0.0.3"
 
   - name: C2
     cmds:
